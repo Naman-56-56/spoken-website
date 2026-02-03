@@ -10,13 +10,7 @@ from creation.models import TutorialSummaryCache, TutorialResource, FossCategory
 from events.models import Testimonials
 from cms.models import Notification, Event
 from cms.cache_registry import register_cache_key
-from .config import (
-    CACHE_RANDOM_TUTORIALS, CACHE_TR_REC, CACHE_TESTIMONIALS, 
-    CACHE_NOTIFICATIONS, CACHE_EVENTS, CACHE_TUTORIALS,
-    CACHE_TIMEOUT_RANDOM_TUTORIALS, CACHE_TIMEOUT_TR_REC, 
-    CACHE_TIMEOUT_TESTIMONIALS, CACHE_TIMEOUT_NOTIFICATIONS, 
-    CACHE_TIMEOUT_EVENTS, CACHE_TIMEOUT_TUTORIALS
-)
+from .config import CACHE_RANDOM_TUTORIALS, CACHE_TR_REC, CACHE_TESTIMONIALS, CACHE_NOTIFICATIONS, CACHE_EVENTS, CACHE_TUTORIALS
 
 def get_key(identifier, key_val):
     return f"{identifier}:{key_val.lower().strip().replace(' ','_')}"
@@ -47,7 +41,7 @@ def get_home_random_tutorials():
                 id__in=sample_ids).select_related(
                     "foss", "first_tutorial", "first_tutorial__tutorial_detail", "first_tutorial__language")
         )
-        cache.set(cache_key, tutorials, timeout=CACHE_TIMEOUT_RANDOM_TUTORIALS) # in sec
+        cache.set(cache_key, tutorials, timeout=CACHE_RANDOM_TUTORIALS) # in sec
     except Exception:
         tutorials = []
     return tutorials
@@ -67,7 +61,7 @@ def get_home_tr_rec(request=None):
             tr_rec = queryset[random_index]
         else:
             tr_rec = None
-        cache.set(cache_key, tr_rec, timeout=CACHE_TIMEOUT_TR_REC) #seconds
+        cache.set(cache_key, tr_rec, timeout=CACHE_TR_REC) #seconds
     except Exception as e:
         tr_rec = None
         if request is not None:
@@ -82,7 +76,7 @@ def get_home_testimonials():
     if testimonials is not None:
         return testimonials
     testimonials = Testimonials.objects.all().order_by("?")[:2]
-    cache.set(cache_key, testimonials, timeout=CACHE_TIMEOUT_TESTIMONIALS) # seconds
+    cache.set(cache_key, testimonials, timeout=CACHE_TESTIMONIALS) # seconds
     return testimonials
 
 # ---- 4. Notifications (shorter cache) ----
@@ -93,7 +87,7 @@ def get_home_notifications():
         return notifications
     today = dt.datetime.today()
     notifications = Notification.objects.filter(Q(start_date__lte=today) & Q(expiry_date__gte=today)).order_by("expiry_date")
-    cache.set(cache_key, notifications, timeout=CACHE_TIMEOUT_NOTIFICATIONS)
+    cache.set(cache_key, notifications, timeout=CACHE_NOTIFICATIONS)
     return notifications
 
 # ---- 5. Upcoming events ----
@@ -104,7 +98,7 @@ def get_home_events():
         return events
     today = dt.datetime.today()
     events = Event.objects.filter(event_date__gte=today).order_by("event_date")[:2]
-    cache.set(cache_key, events, timeout=CACHE_TIMEOUT_EVENTS)
+    cache.set(cache_key, events, timeout=CACHE_EVENTS)
     return events
 
 # ----  Tutorials List ----
@@ -123,22 +117,9 @@ def get_tutorials_list(foss, lang):
     elif lang:
         collection = queryset.filter(language__name=lang).order_by('tutorial_detail__foss__foss', 'tutorial_detail__level', 'tutorial_detail__order')
     else:
-        result = qs.order_by(
-            'tutorial_detail__foss__foss', 
-            'language__name', 
-            'tutorial_detail__level', 
-            'tutorial_detail__order'
-        )
-        
-        if limit_unfiltered:
-            p = page if page else 1
-            start = (p - 1) * page_size
-            result = result[start:start + page_size + 1]
-    
-    if has_filters:
-        cache.set(cache_key, result, timeout=CACHE_TIMEOUT_TUTORIALS)
-    
-    return result
+        collection = queryset.order_by('tutorial_detail__foss__foss', 'language__name', 'tutorial_detail__level', 'tutorial_detail__order')
+    cache.set(cache_key, collection, timeout=CACHE_TUTORIALS)
+    return collection
 
 # ----  Foss Choice For Search Bar ----
 def get_foss_choice(show_on_homepage=1, lang=None):
@@ -160,7 +141,7 @@ def get_foss_choice(show_on_homepage=1, lang=None):
     for foss_row in foss_list:
             foss_list_choices.append((str(foss_row[0]), str(foss_row[0]) + ' (' + str(foss_row[1]) + ')'))
 
-    cache.set(cache_key, foss_list_choices, timeout=CACHE_TIMEOUT_TUTORIALS)
+    cache.set(cache_key, foss_list_choices, timeout=CACHE_TUTORIALS)
     register_cache_key(cache_key)
     return foss_list_choices
 
@@ -185,6 +166,6 @@ def get_lang_choice(show_on_homepage=1, foss=None):
     for lang_row in lang_list:
         lang_list_choices.append((str(lang_row[0]), str(lang_row[0]) + ' (' + str(lang_row[1]) + ')'))
 
-    cache.set(cache_key, lang_list_choices, timeout=CACHE_TIMEOUT_TUTORIALS)
+    cache.set(cache_key, lang_list_choices, timeout=CACHE_TUTORIALS)
     register_cache_key(cache_key)
     return lang_list_choices

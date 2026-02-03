@@ -6,7 +6,7 @@ After=network.target redis.service
 Type=simple
 WorkingDirectory=/django-projects/spoken-website
 Environment="PATH=/django-projects/env1/bin"
-ExecStart=/django-projects/env1/bin/python manage.py rqworker default_queue
+ExecStart=/django-projects/env1/bin/python manage.py rqworker default
 Restart=always
 RestartSec=10
 StandardOutput=journal

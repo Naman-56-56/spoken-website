@@ -287,7 +287,6 @@ class TutorialResource(models.Model):
     # 0 - Not Extended , 1 - Extended , 2 - Tutorial Terminated from user
     extension_status = models.PositiveIntegerField(default=0)
     is_unrestricted = models.BooleanField(default=False) # True if tutorial is accessibile without any restriction
-    is_on_youtube = models.BooleanField(default=False)
 
     class Meta:
         unique_together = ('tutorial_detail', 'language',)
