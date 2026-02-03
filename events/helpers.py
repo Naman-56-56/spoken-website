@@ -90,7 +90,10 @@ def get_fossmdlcourse(foss_id, fossmdlmap_id=None):
         advanced=3 #default
         english=22 #default
         try:
-            fossmdlcourse = FossMdlCourses.objects.get(foss_id=foss_id, language_id=english, level_id=advanced)
+            fossmdlcourse = FossMdlCourses.objects.get(foss__id=foss_id, language__id=english, level__id=advanced)
         except FossMdlCourses.DoesNotExist:
             fossmdlcourse = FossMdlCourses.objects.get(foss_id=foss_id, language__isnull=True, level__isnull=True)
+    except FossMdlCourses.DoesNotExist:
+        # If no FossMdlCourses record exists for this foss_id, return None
+        fossmdlcourse = None
     return fossmdlcourse

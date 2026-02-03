@@ -152,60 +152,60 @@ DATABASES = {
         'PORT': '',                  # Set to empty string for default.	
         "CONN_MAX_AGE": DB_CONN_MAX_AGE_FREQUENT,
     },
-    'ilwmoodle': {	
-        'ENGINE': 'django.db.backends.mysql', # Add 'postgresql_psycopg2', 'mysql', 'sqlite3' or 'oracle'.	
-        'NAME': ILWMDB,                      # Or path to database file if using sqlite3.	
-        # The following settings are not used with sqlite3:	
-        'USER': ILW_MDB_USER,	
-        'PASSWORD': ILW_MDB_PASS,	
-        'HOST': ILW_MDB_HOST,                  # Empty for localhost through domain sockets or '127.0.0.1' for localhost through TCP.	
-        'PORT': ILW_MDB_PORT,                  # Set to empty string for default.	
-    },	
-    'cdeep': {	
-        'ENGINE': 'django.db.backends.mysql', # Add 'postgresql_psycopg2', 'mysql', 'sqlite3' or 'oracle'.	
-        'NAME': CDB,                      # Or path to database file if using sqlite3.	
-        # The following settings are not used with sqlite3:	
-        'USER': CDB_USER,	
-        'PASSWORD': CDB_PASS,	
-        'HOST': '',                  # Empty for localhost through domain sockets or '127.0.0.1' for localhost through TCP.	
-        'PORT': '',                  # Set to empty string for default.	
-    },	
-    'workshop_info': {	
-        'ENGINE': 'django.db.backends.mysql', # Add 'postgresql_psycopg2', 'mysql', 'sqlite3' or 'oracle'.	
-        'NAME': WDB,                      # Or path to database file if using sqlite3.	
-        # The following settings are not used with sqlite3:	
-        'USER': WDB_USER,	
-        'PASSWORD': WDB_PASS,	
-        'HOST': '',                  # Empty for localhost through domain sockets or '127.0.0.1' for localhost through TCP.	
-        'PORT': '',                  # Set to empty string for default.	
-    },	
-    'forums': {	
-        'ENGINE': 'django.db.backends.mysql', # Add 'postgresql_psycopg2', 'mysql', 'sqlite3' or 'oracle'.	
-        'NAME': FDB,                      # Or path to database file if using sqlite3.	
-        # The following settings are not used with sqlite3:	
-        'USER': FDB_USER,	
-        'PASSWORD': FDB_PASS,	
-        'HOST': '',                  # Empty for localhost through domain sockets or '127.0.0.1' for localhost through TCP.	
-        'PORT': '',                  # Set to empty string for default.	
-    },
-    'healthdb': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': HN,
-        'USER': HN_USER,
-        'PASSWORD': HN_PASS,
-        'HOST': HN_HOST,
-        'PORT': HN_PORT,
-    },
-    'stats': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': STATS_DB,
-        'USER': STATS_USER,
-        'PASSWORD': STATS_PWD,
-        'HOST': STATS_HOST,
-        'PORT': STATS_PORT,
-        "CONN_MAX_AGE": DB_CONN_MAX_AGE_FREQUENT,
-    }
-        
+    #'ilwmoodle': {	
+    #    'ENGINE': 'django.db.backends.mysql', # Add 'postgresql_psycopg2', 'mysql', 'sqlite3' or 'oracle'.	
+    #    'NAME': ILWMDB,                      # Or path to database file if using sqlite3.	
+    #    # The following settings are not used with sqlite3:	
+    #    'USER': ILW_MDB_USER,	
+    #    'PASSWORD': ILW_MDB_PASS,	
+    #    'HOST': ILW_MDB_HOST,                  # Empty for localhost through domain sockets or '127.0.0.1' for localhost through TCP.	
+    #    'PORT': ILW_MDB_PORT,                  # Set to empty string for default.	
+    #},	
+    #'cdeep': {	
+    #    'ENGINE': 'django.db.backends.mysql', # Add 'postgresql_psycopg2', 'mysql', 'sqlite3' or 'oracle'.	
+    #    'NAME': CDB,                      # Or path to database file if using sqlite3.	
+    #    # The following settings are not used with sqlite3:	
+    #    'USER': CDB_USER,	
+    #    'PASSWORD': CDB_PASS,	
+    #    'HOST': '',                  # Empty for localhost through domain sockets or '127.0.0.1' for localhost through TCP.	
+    #    'PORT': '',                  # Set to empty string for default.	
+    #},	
+    #'workshop_info': {	
+    #    'ENGINE': 'django.db.backends.mysql', # Add 'postgresql_psycopg2', 'mysql', 'sqlite3' or 'oracle'.	
+    #    'NAME': WDB,                      # Or path to database file if using sqlite3.	
+    #    # The following settings are not used with sqlite3:	
+    #    'USER': WDB_USER,	
+    #    'PASSWORD': WDB_PASS,	
+    #    'HOST': '',                  # Empty for localhost through domain sockets or '127.0.0.1' for localhost through TCP.	
+    #    'PORT': '',                  # Set to empty string for default.	
+    #},	
+    #'forums': {	
+    #    'ENGINE': 'django.db.backends.mysql', # Add 'postgresql_psycopg2', 'mysql', 'sqlite3' or 'oracle'.	
+    #    'NAME': FDB,                      # Or path to database file if using sqlite3.	
+    #    # The following settings are not used with sqlite3:	
+    #    'USER': FDB_USER,	
+    #    'PASSWORD': FDB_PASS,	
+    #    'HOST': '',                  # Empty for localhost through domain sockets or '127.0.0.1' for localhost through TCP.	
+    #    'PORT': '',                  # Set to empty string for default.	
+    #},
+    #'healthdb': {
+    #    'ENGINE': 'django.db.backends.mysql',
+    #    'NAME': HN,
+    #    'USER': HN_USER,
+    #    'PASSWORD': HN_PASS,
+    #    'HOST': HN_HOST,
+    #    'PORT': HN_PORT,
+    #},
+    #'stats': {
+    #    'ENGINE': 'django.db.backends.mysql',
+    #    'NAME': STATS_DB,
+    #    'USER': STATS_USER,
+    #    'PASSWORD': STATS_PWD,
+    #    'HOST': STATS_HOST,
+    #    'PORT': STATS_PORT,
+    #    "CONN_MAX_AGE": DB_CONN_MAX_AGE_FREQUENT,
+    #}
+    #    
 }
 
 
@@ -422,3 +422,5 @@ HDFC_POLL_MAX_RETRIES=HDFC_POLL_MAX_RETRIES
 HDFC_POLL_INTERVAL=HDFC_POLL_INTERVAL
 RESPONSE_KEY=RESPONSE_KEY
 DEVELOPER_EMAIL=DEVELOPER_EMAIL
+
+

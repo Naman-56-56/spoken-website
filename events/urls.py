@@ -2,6 +2,7 @@ from django.conf.urls import url, include
 from events.views import *
 from events.notification import nemail
 from .views import get_schools, get_batches
+from youtube.views import add_youtube_video as youtube_add_video
 
 app_name = 'events'
 urlpatterns = [
@@ -93,6 +94,8 @@ urlpatterns = [
     
     url(r'^resource-center/$',  resource_center, name="resource_center"),
     url(r'^resource-center/(?P<slug>[\w-]+)/$',  resource_center, name="resource_center"),
+    
+    url(r'^add-youtube-video/$',  youtube_add_video, name="add_youtube_video"),
     
     url(r'^academic-center/(?P<academic_id>\d+)/$',  academic_center, name="academic_center"),
     url(r'^academic-center/(?P<academic_id>\d+)/(?P<slug>[\w-]+)/$',  academic_center, name="academic_center"),
