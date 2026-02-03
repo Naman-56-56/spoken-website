@@ -1954,6 +1954,8 @@ def test_request(request, role, rid = None):
                 #  async logs & notifications
                 async_test_post_save(t, user, message)
 
+                messages.success(request, "Test request submitted successfully.")
+
                 return HttpResponseRedirect(
                     "/software-training/test/{}/pending/".format(role)
                 )
