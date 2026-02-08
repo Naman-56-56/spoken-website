@@ -201,7 +201,7 @@ def events_test_csv(request):
     writer = csv.writer(response)
 
     # header
-    writer.writerow(['State', 'City', 'Institution', 'FOSS', 'Organiser','Department', 'Date', 'Participants'])
+    writer.writerow(['State', 'City', 'Institution', 'FOSS', 'Organiser','Department','Department', 'Date', 'Participants'])
 
     def to_text(value):
         if value is None:
@@ -216,6 +216,13 @@ def events_test_csv(request):
             return training.department.name
         return ''
     
+    def to_text(value):
+        if value is None:
+            return ''
+        if isinstance(value, bytes):
+            return value.decode('utf-8', errors='ignore')
+        return str(value)
+    
     # records
     for record in collection.qs:
         writer.writerow([
@@ -224,7 +231,7 @@ def events_test_csv(request):
             to_text(record.academic.institution_name),
             to_text(record.foss.foss),
             to_text(record.organiser.user.first_name),
-            to_text(get_department(record)),
+            to_text(record.training.department.name),
             to_text(record.tdate),
             to_text(record.participant_count)
         ])
