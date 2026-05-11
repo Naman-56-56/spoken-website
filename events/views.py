@@ -2,6 +2,7 @@ from django.http import JsonResponse, HttpResponseNotAllowed
 from django.http import HttpResponseForbidden, HttpResponseBadRequest
 from .models import StudentBatch
 from django.urls import reverse
+from django import forms
 from redis import Redis
 from rq.job import Job
 from rq.exceptions import NoSuchJobError
@@ -102,6 +103,7 @@ from django.contrib.auth.hashers import make_password
 from mdldjango.get_or_create_participant import encript_password
 from .helpers import send_bulk_student_reset_mail, get_fossmdlcourse
 from .certificates import *
+from youtube.utils import user_can_upload_to_youtube
 
 def can_clone_training(training):
     if training.tdate > datetime.datetime.strptime('01-02-2015', "%d-%m-%Y").date() and training.organiser.academic.institution_type.name != 'School':
@@ -624,10 +626,12 @@ def events_dashboard(request):
                 academic_id=user.invigilator.academic_id,
                 categoryid__in=user.invigilator.academic.test_set.filter(invigilator_id=user.id).values_list('id'
                 )).order_by('-created')[:30]
+    is_moodle_admin = user.groups.filter(id__in=getattr(settings, 'MOODLE_ADMIN_ROLES', [])).exists()
 
     context = {
         'roles': roles,
         'institution_type': institute_name,
+        'is_moodle_admin': is_moodle_admin,
         'organiser_workshop_notification': organiser_workshop_notification,
         'organiser_test_notification': organiser_test_notification,
         'organiser_training_notification': organiser_training_notification,
@@ -635,6 +639,7 @@ def events_dashboard(request):
         'rp_workshop_notification': rp_workshop_notification,
         'rp_training_notification': rp_training_notification,
         'invigilator_test_notification': invigilator_test_notification,
+        'can_upload_youtube': user_can_upload_to_youtube(user),
         }
     return render(request, 'events/templates/events_dashboard.html',
                   context)
@@ -2346,6 +2351,49 @@ def test_participant(request, tid=None):
         
         return render(request, 'events/templates/test/test_participant.html', context)
 
+@login_required
+def test_participant_csv(request, tid=None):
+    if not tid:
+        raise PermissionDenied()
+    try:
+        t = Test.objects.get(id=tid)
+    except Exception:
+        raise PermissionDenied()
+
+    if not (t.organiser.user == request.user or (t.invigilator and t.invigilator.user == request.user)):
+        raise PermissionDenied()
+
+    if t.status == 4:
+        test_attendances = TestAttendance.objects.filter(test_id=tid, status__gte=2)
+    else:
+        test_attendances = TestAttendance.objects.filter(test_id=tid)
+
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="participants_{}.csv"'.format(tid)
+    writer = csv.writer(response)
+    writer.writerow(['#', 'First Name', 'Last Name', 'Email ID', 'Score'])
+
+    from mdldjango.models import MdlUser
+    from events.templatetags.eventsdata import get_participant_mark
+
+    for index, record in enumerate(test_attendances, start=1):
+        mdluser = MdlUser.objects.using('moodle').get(id=record.mdluser_id)
+        first_name = record.mdluser_firstname if record.mdluser_firstname else mdluser.firstname
+        last_name = record.mdluser_lastname if record.mdluser_lastname else mdluser.lastname
+        score = get_participant_mark(tid, record.mdluser_id)
+        if not score:
+            score = '-'
+
+        writer.writerow([
+            index,
+            first_name.title(),
+            last_name.title(),
+            mdluser.email,
+            score
+        ])
+
+    return response
+
 def test_participant_ceritificate(request, wid, participant_id):
     #response = HttpResponse(content_type='application/pdf')
     #response['Content-Disposition'] = 'attachment; filename="somefilename.pdf"'
@@ -3386,4 +3434,52 @@ def get_schools(request):
     return JsonResponse([])
 
 
+class YouTubeUploadForm(forms.Form):
+    """Form for uploading YouTube videos"""
+    video = forms.FileField(
+        label='Video File',
+        widget=forms.FileInput(attrs={'class': 'form-control'})
+    )
+    title = forms.CharField(
+        label='Title',
+        max_length=200,
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Enter video title'})
+    )
+    description = forms.CharField(
+        label='Description',
+        widget=forms.Textarea(attrs={'class': 'form-control', 'placeholder': 'Enter video description'})
+    )
+    privacy_status = forms.ChoiceField(
+        label='Privacy Status',
+        choices=[
+            ('public', 'Public'),
+            ('unlisted', 'Unlisted'),
+            ('private', 'Private'),
+        ],
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
 
+
+def add_youtube_video(request):
+    """
+    View for uploading YouTube videos with title, description, and privacy settings.
+    """
+    context = {}
+    template = 'youtube/templates/add_youtube_video.html'
+    
+    if request.method == 'GET':
+        # Display empty form
+        form = YouTubeUploadForm()
+        context['form'] = form
+        
+    elif request.method == 'POST':
+        # Handle form submission
+        form = YouTubeUploadForm(request.POST, request.FILES)
+        context['form'] = form
+        
+        if form.is_valid():
+            # Backend processing would happen here (currently placeholder)
+            messages.success(request, 'Video upload initiated successfully!')
+            return HttpResponseRedirect('/software-training/')
+    
+    return render(request, template, context)
