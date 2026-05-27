@@ -229,6 +229,62 @@ def register_user(request):
 		phone = request.GET.get('phone', None)
 		callbackurl = request.GET.get('callbackurl', None)
 		event_id = request.GET.get('event_id')
+		event_register = None
+		if event_id:
+			try:
+				event_register = TrainingEvents.objects.get(id=event_id)
+			except TrainingEvents.DoesNotExist:
+				return render(request, 'error.html', {'error': 'Invalid Event'})
+
+		if event_id and source != 'deet' and event_register and 'DEET' not in event_register.event_name.upper():
+			if not _validate_parameters('event_id', event_id):
+				return render(request, 'error.html', {'error': 'Invalid Event'})
+
+			if request.user.is_authenticated():
+				profile = Profile.objects.filter(user=request.user).first()
+				student = Student.objects.filter(user=request.user).first()
+				form.fields["name"].initial = request.user.get_full_name()
+				form.fields["email"].initial = request.user.email
+				if profile:
+					form.fields["phone"].initial = profile.phone
+					form.fields['phone'].widget.attrs['readonly'] = True
+				if student and student.gender:
+					gender_value = student.gender.lower()
+					if gender_value.startswith('f'):
+						form.fields["gender"].initial = 'F'
+					elif gender_value.startswith('m'):
+						form.fields["gender"].initial = 'M'
+					else:
+						form.fields["gender"].initial = 'O'
+					form.fields['gender'].widget.attrs['readonly'] = True
+				form.fields['name'].widget.attrs['readonly'] = True
+				form.fields['email'].widget.attrs['readonly'] = True
+
+			fosses = event_register.course.foss.all()
+			if event_register.event_type == 'HN':
+				hn_categories = [x.external_course for x in ExternalCourseMap.objects.filter(foss__in=fosses)]
+				topic_categories = TopicCategory.objects.filter(category_id__in=hn_categories).values_list('topic_category_id', flat=True)
+				languages = HNContributorRole.objects.filter(topic_cat_id__in=topic_categories).values_list('language_id', flat=True)
+				langs = HNLanguage.objects.filter(lan_id__in=languages).distinct()
+				context["language_hn"] = langs
+				form.fields["language_hn"].queryset = langs
+			else:
+				langs = Language.objects.filter(id__in =
+					TutorialResource.objects.filter(
+						tutorial_detail__foss__in = fosses, status=1).exclude(
+							language=event_register.Language_of_workshop).values('language').distinct())
+				context["langs"] = langs
+				form.fields["foss_language"].queryset = langs
+
+			gst = float(event_register.event_fee) * 0.18
+			context["gst"] = gst
+			form.fields["amount"].initial = float(event_register.event_fee) + gst
+			form.fields["amount"].widget.attrs['readonly'] = True
+			context['event_obj'] = event_register
+			context['source'] = source
+			context['email'] = email
+			context['callbackurl'] = callbackurl
+			return render(request, template_name, context)
 		if not _validate_parameters('source', source):
 			return render(request, 'error.html', {'error': 'Invalid Source'})
 		if not _validate_parameters('foss', foss):
@@ -979,54 +1035,68 @@ class BatchTrainingCertificateView(FDPTrainingCertificate, View):
     def post(self, request, *args, **kwargs):
         eventid = request.POST.get("eventid")
         event = get_object_or_404(TrainingEvents, id=eventid)
-
+        
         if event.download_access != request.user.email:
             messages.error(request, "Permission Denied!")
             return HttpResponseRedirect("/")
 
         participants = Participant.objects.filter(event=event)
-
+        
         output = PdfFileWriter()
         response = HttpResponse(content_type='application/pdf')
-        response['Content-Disposition'] = f'attachment; filename=Event_{event.id}_Training_Certificates.pdf'
-
-        page_count = 0
+        filename = f"Event_{event.id}_Training_Certificates.pdf"
+        response['Content-Disposition'] = f'attachment; filename={filename}'
+        
+        added_pages = 0
         for participant in participants:
             if participant.reg_approval_status == 1 and registartion_successful(participant.user, event):
                 user = participant.user
-
-                canvas_buffer = BytesIO()
-                pdf_canvas = canvas.Canvas(canvas_buffer)
-                pdf_canvas.setFont('Helvetica', 35, leading=None)
+                training_start = event.event_start_date
+                
+                imgTemp = BytesIO()
+                imgDoc = canvas.Canvas(imgTemp)
+                imgDoc.setFont('Helvetica', 35, leading=None)
                 if event.event_type != "INTERN":
-                    pdf_canvas.drawCentredString(405, 470, "Certificate of Participation")
-
-                signature_path = get_signature(event.event_start_date)
-                pdf_canvas.drawImage(signature_path, 600, 100, 150, 76)
-
-                pdf_canvas.setFillColorRGB(211, 211, 211)
-                pdf_canvas.setFont('Helvetica', 10, leading=None)
-                pdf_canvas.drawString(10, 6, '')
-
-                body_style = ParagraphStyle(name='body', fontSize=16, leading=30, alignment=0, spaceAfter=20)
-                body = Paragraph(get_training_certi_text(event, user), body_style)
+                    imgDoc.drawCentredString(405, 470, "Certificate of Participation")
+                    
+                imgPath = get_signature(training_start)
+                imgDoc.drawImage(imgPath, 600, 100, 150, 76)
+                
+                certificate_pass = ''
+                imgDoc.setFillColorRGB(211, 211, 211)
+                imgDoc.setFont('Helvetica', 10, leading=None)
+                imgDoc.drawString(10, 6, certificate_pass)
+                
+                text = get_training_certi_text(event, user)
+                
+                centered = ParagraphStyle(name = 'centered',
+                  fontSize = 16,
+                  leading = 30,
+                  alignment = 0,
+                  spaceAfter = 20
+                )
+                
+                p = Paragraph(text, centered)
                 _, page_height = A4
-                _, body_height = body.wrap(650, 200)
-                body.drawOn(pdf_canvas, 4.2 * cm, page_height - 15.5 * cm - body_height)
-
-                pdf_canvas.save()
-
+                p_width, p_height = p.wrap(650, 200)
+                top_margin = 15.5 * cm
+                y_position = page_height - top_margin - p_height
+                p.drawOn(imgDoc, 4.2 * cm, y_position)
+                
+                imgDoc.save()
+                
                 template_path = get_ilw_certificate(event, 'training')
-                page = PdfFileReader(open(template_path, "rb")).getPage(0)
-                page.mergePage(PdfFileReader(BytesIO(canvas_buffer.getvalue())).getPage(0))
-
+                page = PdfFileReader(open(template_path,"rb")).getPage(0)
+                overlay = PdfFileReader(BytesIO(imgTemp.getvalue())).getPage(0)
+                page.mergePage(overlay)
+                
                 output.addPage(page)
-                page_count += 1
-
-        if page_count == 0:
+                added_pages += 1
+        
+        if added_pages == 0:
             messages.error(request, "No eligible participants found for training certificates.")
             return HttpResponseRedirect(request.META.get('HTTP_REFERER', '/'))
-
+            
         output.write(response)
         return response
 
@@ -1423,75 +1493,96 @@ class BatchTestCertificateView(ILWTestCertificate, View):
     def post(self, request, *args, **kwargs):
         eventid = request.POST.get("eventid")
         event = get_object_or_404(TrainingEvents, id=eventid)
-
+        
         if event.download_access != request.user.email:
             messages.error(request, "Permission Denied!")
             return HttpResponseRedirect("/")
 
         output = PdfFileWriter()
         response = HttpResponse(content_type='application/pdf')
-        response['Content-Disposition'] = f'attachment; filename=Event_{event.id}_Test_Certificates.pdf'
-
-        page_count = 0
-
-        # Fetch passing tests ordered so the highest grade per participant/foss comes first
+        filename = f"Event_{event.id}_Test_Certificates.pdf"
+        response['Content-Disposition'] = f'attachment; filename={filename}'
+        
+        added_pages = 0
+        
+        # Get all distinct participants with a passing grade
         passing_tests = EventTestStatus.objects.filter(
-            event=event,
+            event=event, 
             mdlgrade__gte=settings.PASS_GRADE
         ).order_by('participant_id', '-mdlgrade')
-
-        # Track (user_id, fossid) pairs already processed to avoid duplicates.
-        # For HN events, fossid is irrelevant so we key on user_id alone.
-        seen = set()
-
+        
+        # We only want one certificate per participant per fossid (or per event if HN)
+        processed_tests = set()
+        
         for teststatus in passing_tests:
             user = teststatus.participant.user
-            dedup_key = (user.id, teststatus.fossid_id) if event.event_type != "HN" else user.id
-            if dedup_key in seen:
+            key = (user.id, teststatus.fossid_id) if event.event_type != "HN" else user.id
+            if key in processed_tests:
                 continue
-            seen.add(dedup_key)
+            processed_tests.add(key)
+            
+            training_start = event.event_start_date
+            training_end = event.event_end_date
+            
+            imgTemp = BytesIO()
+            imgDoc = canvas.Canvas(imgTemp)
 
-            if not teststatus.cert_code:
-                teststatus.cert_code = str(teststatus.participant_id) + id_generator(10 - len(str(teststatus.participant_id)))
-            teststatus.part_status = 3
-            teststatus.save()
-
-            canvas_buffer = BytesIO()
-            pdf_canvas = canvas.Canvas(canvas_buffer)
-
-            pdf_canvas.setFont('Helvetica', 25, leading=None)
+            imgDoc.setFont('Helvetica', 25, leading=None)
             if event.event_type != "INTERN":
-                pdf_canvas.drawCentredString(405, 470, "Certificate for Completion of Training")
+                imgDoc.drawCentredString(405, 470, "Certificate for Completion of Training")
+                
+            imgPath = get_signature(training_start)
+            imgDoc.drawImage(imgPath, 600, 100, 150, 76)
 
-            signature_path = get_signature(event.event_start_date)
-            pdf_canvas.drawImage(signature_path, 600, 100, 150, 76)
+            certificate_pass = ''
 
-            pdf_canvas.setFillColorRGB(211, 211, 211)
-            pdf_canvas.setFont('Helvetica', 10, leading=None)
-            pdf_canvas.drawString(10, 6, teststatus.cert_code)
+            if teststatus.cert_code:
+                certificate_pass = teststatus.cert_code
+                teststatus.part_status = 3
+                teststatus.save()
+            else:
+                certificate_pass = str(teststatus.participant_id)+id_generator(10-len(str(teststatus.participant_id)))
+                teststatus.cert_code = certificate_pass
+                teststatus.part_status = 3
+                teststatus.save()
 
-            pdf_canvas.setFillColorRGB(0, 0, 0)
-            pdf_canvas.drawCentredString(150, 115, event.event_end_date.strftime('%d %B %Y'))
+            imgDoc.setFillColorRGB(211, 211, 211)
+            imgDoc.setFont('Helvetica', 10, leading=None)
+            imgDoc.drawString(10, 6, certificate_pass)
 
-            body_style = ParagraphStyle(name='body', fontSize=16, leading=30, alignment=0, spaceAfter=20)
-            body = Paragraph(get_test_certi_text(event, user, teststatus), body_style)
-            _, page_height = A4
-            _, body_height = body.wrap(650, 200)
-            body.drawOn(pdf_canvas, 4.2 * cm, page_height - 15.5 * cm - body_height)
+            text = get_test_certi_text(event, user, teststatus)
+            centered = ParagraphStyle(name = 'centered',
+              fontSize = 16,
+              leading = 30,
+              alignment = 0,
+              spaceAfter = 20
+            )
+            imgDoc.setFillColorRGB(0, 0, 0)
+            imgDoc.drawCentredString(150, 115, training_end.strftime('%d %B %Y'))
+            
+            p = Paragraph(text, centered)
 
-            pdf_canvas.save()
+            _, page_height = A4 
+            p_width, p_height = p.wrap(650, 200) 
+            top_margin = 15.5 * cm 
 
+            y_position = page_height - top_margin - p_height 
+            p.drawOn(imgDoc, 4.2 * cm, y_position) 
+
+            imgDoc.save()
+            
             template_path = get_ilw_certificate(event, 'test')
-            page = PdfFileReader(open(template_path, "rb")).getPage(0)
-            page.mergePage(PdfFileReader(BytesIO(canvas_buffer.getvalue())).getPage(0))
+            page = PdfFileReader(open(template_path,"rb")).getPage(0)
+            overlay = PdfFileReader(BytesIO(imgTemp.getvalue())).getPage(0)
+            page.mergePage(overlay)
 
             output.addPage(page)
-            page_count += 1
-
-        if page_count == 0:
+            added_pages += 1
+            
+        if added_pages == 0:
             messages.error(request, "No eligible participants found for test certificates.")
             return HttpResponseRedirect(request.META.get('HTTP_REFERER', '/'))
-
+            
         output.write(response)
         return response
 
