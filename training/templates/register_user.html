@@ -12,6 +12,54 @@
 .info-table td{
   display: flex;
 }
+.modal-custom-ended {
+  border-radius: 12px;
+  border: none;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+  background: #ffffff;
+}
+.modal-custom-ended .modal-header {
+  background: #f2dede;
+  color: #a94442;
+  border-top-left-radius: 12px;
+  border-top-right-radius: 12px;
+  border-bottom: 1px solid #ebccd1;
+  padding: 18px 24px;
+}
+.modal-custom-ended .modal-title {
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.modal-custom-ended .modal-body {
+  padding: 24px;
+  font-size: 16px;
+  color: #333333;
+  line-height: 1.6;
+}
+.modal-custom-ended .modal-footer {
+  border-top: 1px solid #e2e8f0;
+  padding: 15px 24px;
+}
+.swayam-list {
+  margin-top: 15px;
+  padding-left: 20px;
+}
+.swayam-list li {
+  margin-bottom: 10px;
+  font-size: 15px;
+}
+.swayam-link {
+  color: #3182ce;
+  font-weight: 600;
+  text-decoration: none;
+  transition: color 0.2s ease, text-decoration 0.2s ease;
+}
+.swayam-link:hover {
+  color: #2b6cb0;
+  text-decoration: underline;
+}
 </style>
 {% endblock %}
 {% block search %}{% endblock %}
@@ -330,6 +378,35 @@
                 </div>
               </div>
 
+<!-- Registration Ended Modal -->
+<div class="modal fade" id="registrationEndedModal" tabindex="-1" role="dialog" aria-labelledby="registrationEndedModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content modal-custom-ended">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+        <h4 class="modal-title" id="registrationEndedModalLabel">
+          <i class="fa fa-exclamation-triangle" aria-hidden="true"></i> Event Registration Ended
+        </h4>
+      </div>
+      <div class="modal-body">
+        <p>Event registration has ended.</p>
+        {% if event_obj.is_swayam %}
+          <p>Please try registering in one of the following events:</p>
+          <ol class="swayam-list">
+            {% for event in active_swayam_events %}
+              <li><a href="{% url 'training:register_user' %}?event_id={{ event.id }}" class="swayam-link">{{ event.event_name }}</a></li>
+            {% empty %}
+              <li class="text-muted">No active Swayam events found.</li>
+            {% endfor %}
+          </ol>
+        {% endif %}
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
   
 {%endblock%}
 {% block jsblock %}
@@ -485,6 +562,7 @@ $('#id_email').on('focusout',function(){
 });
 
  $( document ).ready(function() {
+  var registrationEnded = {% if registration_ended %}true{% else %}false{% endif %};
 
   var state = $("#id_state").val();
   $('#id_state').val(state).trigger('change');
@@ -614,6 +692,22 @@ $('#id_college').change(function(){
 
   $('#id_name, #id_email, #id_phone, #id_gender, #id_state, #id_college').on('change input', checkRegisterButton);
   checkRegisterButton();
+
+  $('#register_form').submit(function(event) {
+    if (registrationEnded) {
+      event.preventDefault();
+      $('#registrationEndedModal').modal('show');
+      return false;
+    }
+  });
+
+  $('#register_paid, #make_payment').click(function(event) {
+    if (registrationEnded) {
+      event.preventDefault();
+      $('#registrationEndedModal').modal('show');
+      return false;
+    }
+  });
 });
 </script>
 
