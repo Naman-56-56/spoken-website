@@ -10,10 +10,11 @@ from datetime import datetime,date
 from django.conf import settings
  
 from django.db.models import Q
-from django.http import HttpResponse
-from django.shortcuts import render
+from django.http import HttpResponse, FileResponse
+from django.shortcuts import render, redirect
 from django.views.decorators.csrf import csrf_protect, csrf_exempt
 from django.template.context_processors import csrf
+from django.contrib.auth.decorators import login_required
 
 # Spoken Tutorial Stuff
 from cdcontent.forms import *
@@ -22,6 +23,9 @@ from forums.models import Answer, Question
 from events.models import AcademicCenter, State, AcademicKey, Student, StudentMaster, StudentBatch
 from donate.forms import PayeeForm
 from donate.models import Payee
+
+import logging
+logger = logging.getLogger(__name__)
 
 # Create your views here.
 def zipdir(src_path, dst_path, archive):
@@ -230,9 +234,38 @@ def add_srt_file(archive, tr_rec, filepath, eng_flag, srt_files):
             srt_files.add(filepath)
             archive.write(settings.MEDIA_ROOT + filepath, 'spoken/' + filepath)
 
+@login_required
+def download_ilw_course(request, event_id):
+    print("inside download_ilw_course")
+    #check if the event zip already exists : event_<event_id>.zip
+    zipfile_name = f"event_{event_id}.zip"
+    file_path = os.path.join(settings.MEDIA_ROOT, "cdimage", zipfile_name)
+    logger.warning(
+        "CD download accessed | user=%s | user_id=%s | ip=%s | path=%s",
+        getattr(request.user, "username", None),
+        getattr(request.user, "id", None),
+        request.META.get("REMOTE_ADDR"),
+        request.path,
+    )
+    if os.path.isfile(file_path):
+        print(f"ZIP file exists : {file_path}")
+        return redirect('/media/cdimage/{}'.format(zipfile_name))
+        # response = FileResponse(open(file_path, 'rb'), content_type='application/zip')
+        # response['Content-Disposition'] = 'attachment; filename="{}"'.format(zipfile_name)
+        # return response
+    else:
+        print(f"ZIP file do not exist : {file_path}")
+        response = internal_computation(request, 'general', event_id)
+        return response
+        
 
-def internal_computation(request, user_type):
-    zipfile_name = '{}.zip'.format(datetime.datetime.now().strftime('%Y%m%d%H%M%S%f'))
+
+@login_required
+def internal_computation(request, user_type, event_id=''):
+    if user_type == 'general':
+        zipfile_name = f"event_{event_id}.zip"
+    else:
+        zipfile_name = '{}.zip'.format(datetime.datetime.now().strftime('%Y%m%d%H%M%S%f'))
     file_obj = open('{}cdimage/{}'.format(settings.MEDIA_ROOT, zipfile_name), 'wb')
     archive = zipfile.ZipFile(file_obj, 'w', zipfile.ZIP_DEFLATED, allowZip64=True)
     try:
@@ -324,11 +357,14 @@ def internal_computation(request, user_type):
 
     file_obj.close()
     file_path= os.path.dirname(os.path.realpath(__file__))+'/../media/cdimage/{}'.format(zipfile_name)
-    response = HttpResponse(open(file_path, 'rb'), content_type='application/zip')
+    # response = HttpResponse(open(file_path, 'rb'), content_type='application/zip')
     if user_type == 'paid':
         return zipfile_name
     elif user_type == 'general':
-        return response
+        return redirect('/media/cdimage/{}'.format(zipfile_name))
+        # response = FileResponse(open(file_path, 'rb'), content_type='application/zip')
+        # response['Content-Disposition'] = 'attachment; filename="{}"'.format(zipfile_name)
+        # return response
 
 @csrf_exempt
 def home(request):
