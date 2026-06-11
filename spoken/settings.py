@@ -38,9 +38,10 @@ PASSWORD_HASHERS = (
 )
 # email errors and 404
 SERVER_EMAIL = 'error-report@spoken-tutorial.org'
-ADMINS = (
-    ('Web Administrator', 'web-notify@spoken-tutorial.org'),
-)
+# ADMINS = (
+#     ('Web Administrator', 'web-notify@spoken-tutorial.org'),
+# )
+ADMINS = []
 
 MANAGERS = (
     ('Web Administrator', 'web-notify@spoken-tutorial.org'),
@@ -432,13 +433,31 @@ LOGGING = {
             "format": "[{asctime}] {levelname} {name}: {message}",
             "style": "{",
         },
+        'verbose': {
+            'format': '[{asctime}] {levelname} {name} {message}',
+            'style': '{',
+        },
     },
 
     "handlers": {
+        "django_error_file": {
+            'level': 'ERROR',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': ALLOWED_LOGS["django-error"],
+            'maxBytes': 1024 * 1024 * 50,  # 50 MB
+            'backupCount': 10,
+            'formatter': 'verbose',
+        },
         "cd_download_file": {
             "level": "WARNING",
             "class": "logging.FileHandler",
-            "filename": "/var/log/spoken-cdcontent-ilw.log",
+            "filename": ALLOWED_LOGS["cdcontent-ilw"],
+            "formatter": "simple",
+        },
+        "training_file": {
+            "level": "WARNING",
+            "class": "logging.FileHandler",
+            "filename": ALLOWED_LOGS['training'],
             "formatter": "simple",
         }
     },
@@ -448,6 +467,16 @@ LOGGING = {
             "handlers": ["cd_download_file"],
             "level": "WARNING",
             "propagate": False,
-        }
+        },
+        "training": {
+            "handlers": ["training_file"],
+            "level": "WARNING",
+            "propagate": False,
+        },
+         'django.request': {
+            'handlers': ['django_error_file'],
+            'level': 'ERROR',
+            'propagate': False,
+        },
     },
 }
