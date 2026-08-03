@@ -48,17 +48,6 @@ def generate_payment_receipt_pdf(payment):
     p.setFont("Helvetica", 10)
     p.drawCentredString(297.6, 745, "https://spoken-tutorial.org")
     
-    # Text under logos
-    p.setFont("Helvetica-Bold", 9)
-    p.setFillColor(colors.HexColor('#1F4E78'))
-    p.drawCentredString(89, 715, "EduPyramids")
-    
-    p.setFont("Helvetica-Bold", 9)
-    p.setFillColor(colors.HexColor('#D9534F'))
-    p.drawCentredString(506, 718, "Spoken Tutorial")
-    p.setFont("Helvetica", 7)
-    p.setFillColor(colors.HexColor('#000000'))
-    p.drawCentredString(506, 708, "Developed at IIT Bombay")
     
     # 2. Reference Number
     ref_no = f"Ref.No. ST/{payment.payment_date.year}/{10000 + payment.id}"
