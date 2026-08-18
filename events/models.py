@@ -1823,3 +1823,20 @@ class AcademicKey(models.Model):
   
   def __str__(self):
     return self.academic.institution_name
+
+
+class PaymentVerificationUser(models.Model):
+  user = models.ForeignKey(User, on_delete=models.PROTECT)
+
+  state = models.ForeignKey(State, on_delete=models.PROTECT)
+  created_at = models.DateTimeField(auto_now_add=True)
+  updated_at = models.DateTimeField(auto_now=True)
+
+  def __str__(self):
+    return "{0} - {1}".format(self.user.username, self.state.name)
+
+  class Meta(object):
+    verbose_name = "Payment Verification User"
+    verbose_name_plural = "Payment Verification Users"
+    unique_together = (("user", "state"),)
+
