@@ -54,16 +54,23 @@ class PaymentVerificationFilter(django_filters.FilterSet):
   def __init__(self, *args, **kwargs):
     user = None
     if 'user' in kwargs:
-      user = kwargs['user']
-      kwargs.pop('user')
+      user = kwargs.pop('user')
     super(PaymentVerificationFilter, self).__init__(*args, **kwargs)
-    choices = list(State.objects.values_list('id', 'name').order_by('name'))
+    if user and not user.is_superuser:
+      user_states = PaymentVerificationUser.objects.filter(user=user).values_list('state_id', flat=True)
+      if user_states.exists():
+        choices = list(State.objects.filter(id__in=user_states).values_list('id', 'name').order_by('name'))
+      else:
+        choices = []
+    else:
+      choices = list(State.objects.values_list('id', 'name').order_by('name'))
     choices.insert(0, ('', '---------'),)
     self.filters['state'].extra.update({'choices' : choices})
     
   class Meta(object):
     model = AcademicPaymentStatus
     fields = ['state', 'verification_status', 'academic__institution_name']
+
 
 class OrganiserFilter(django_filters.FilterSet):
   academic__state = django_filters.ChoiceFilter(choices=State.objects.none())

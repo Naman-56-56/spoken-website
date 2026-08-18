@@ -3760,7 +3760,11 @@ class PaymentVerificationDashboardView(ListView):
 
     def get_queryset(self):
         qs = AcademicPaymentStatus.objects.select_related('academic', 'state').order_by('-entry_date')
-        self.filter = PaymentVerificationFilter(self.request.GET, queryset=qs)
+        user = self.request.user
+        if not user.is_superuser:
+            user_states = PaymentVerificationUser.objects.filter(user=user).values_list('state_id', flat=True)
+            qs = qs.filter(state_id__in=user_states)
+        self.filter = PaymentVerificationFilter(self.request.GET, queryset=qs, user=user)
         self.header = {
             1: SortableHeader('#', False),
             2: SortableHeader('state', True, 'State'),
@@ -3797,10 +3801,24 @@ class PaymentVerificationDetailView(DetailView):
     def dispatch(self, *args, **kwargs):
         return super(PaymentVerificationDetailView, self).dispatch(*args, **kwargs)
 
+    def get_object(self, queryset=None):
+        obj = super(PaymentVerificationDetailView, self).get_object(queryset)
+        user = self.request.user
+        if not user.is_superuser:
+            user_states = PaymentVerificationUser.objects.filter(user=user).values_list('state_id', flat=True)
+            if obj.state_id not in user_states:
+                raise PermissionDenied("You do not have permission to view records for this state.")
+        return obj
+
 
 @group_required("Payment Verification Staff")
 def AcademicPaymentApproveView(request, pk):
     payment = get_object_or_404(AcademicPaymentStatus, pk=pk)
+    if not request.user.is_superuser:
+        user_states = PaymentVerificationUser.objects.filter(user=request.user).values_list('state_id', flat=True)
+        if payment.state_id not in user_states:
+            raise PermissionDenied("You do not have permission to approve records for this state.")
+
     if payment.verification_status != 1:
         payment.verification_status = 1
         payment.approved_by = request.user
@@ -3829,6 +3847,11 @@ def AcademicPaymentApproveView(request, pk):
 @group_required("Payment Verification Staff")
 def AcademicPaymentRejectView(request, pk):
     payment = get_object_or_404(AcademicPaymentStatus, pk=pk)
+    if not request.user.is_superuser:
+        user_states = PaymentVerificationUser.objects.filter(user=request.user).values_list('state_id', flat=True)
+        if payment.state_id not in user_states:
+            raise PermissionDenied("You do not have permission to reject records for this state.")
+
     payment.verification_status = 2
     payment.approved_by = request.user
     payment.approved_on = timezone.now()
@@ -3856,6 +3879,12 @@ class DownloadReceiptView(View):
         
         if not (is_staff or is_owner):
             raise PermissionDenied("You do not have permission to download this receipt.")
+            
+        if is_staff and not request.user.is_superuser:
+            user_states = PaymentVerificationUser.objects.filter(user=request.user).values_list('state_id', flat=True)
+            if payment.state_id not in user_states:
+                raise PermissionDenied("You do not have permission to download receipt for this state.")
+
             
         if payment.verification_status != 1:
             raise PermissionDenied("Receipt is not verified/approved yet.")

@@ -82,4 +82,11 @@ class CourseMapAdmin(admin.ModelAdmin):
     # Custom form to overwrite the default form field options
     form = MapCourseWithFossForm
 
+class PaymentVerificationUserAdmin(admin.ModelAdmin):
+    list_display = ('user', 'state', 'created_at', 'updated_at')
+    list_filter = ('state',)
+    search_fields = ('user__username', 'user__first_name', 'user__last_name', 'state__name')
+
 admin.site.register(CourseMap, CourseMapAdmin)
+admin.site.register(PaymentVerificationUser, PaymentVerificationUserAdmin)
+
