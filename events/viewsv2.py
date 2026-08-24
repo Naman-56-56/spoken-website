@@ -3535,6 +3535,19 @@ class AcademicKeyCreateView(CreateView):
       ac_key.expiry_date = expiry_date
       ac_key.save()
 
+      # Send confirmation email (with attached receipt PDF) to organisers (status 1 or 3) of that academic center
+      organiser_emails = list(
+          Organiser.objects.filter(academic=self.object.academic, status__in=[1, 3])
+          .exclude(user__email='')
+          .values_list('user__email', flat=True)
+      )
+      recipients = set(organiser_emails)
+      if self.object.email:
+          recipients.add(self.object.email)
+      recipients = [e for e in recipients if e]
+      if recipients:
+          send_email('Academic Payment Added By Manager', to=recipients, instance=self.object)
+
       messages.success(self.request, "Payment Details for academic is added successfully.")
       return HttpResponseRedirect(self.success_url)
 

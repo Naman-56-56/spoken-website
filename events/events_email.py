@@ -119,6 +119,35 @@ Spoken Tutorial Team,
 IIT Bombay.
 '''.format(instance.academic.institution_name)
 
+    elif status == 'Academic Payment Added By Manager':
+        subject = f'Spoken Tutorial Academic Center Payment Details Added - {instance.academic.institution_name}'
+        manager_name = instance.entry_user.get_full_name() if instance.entry_user else ''
+        if not manager_name and instance.entry_user:
+            manager_name = instance.entry_user.username
+        manager_info = f"by Training Manager ({manager_name})" if manager_name else "by Training Manager"
+
+        message = '''Dear Organiser,
+
+Payment details for your Academic Center {0} have been added {1}.
+
+Payment Summary:
+- Amount: Rs. {2}
+- Payment Date: {3}
+- Transaction ID / UTR: {4}
+
+You can now access active software training services and download your payment receipt from the Organizer dashboard under transaction history.
+
+Regards,
+Spoken Tutorial Team,
+IIT Bombay.
+'''.format(
+            instance.academic.institution_name,
+            manager_info,
+            instance.amount,
+            instance.payment_date,
+            instance.transactionid or "N/A"
+        )
+
     elif status == 'Academic Payment Rejected':
         subject = 'Spoken Tutorial Academic Center Payment Rejected'
         message = '''Dear Organiser,
@@ -144,7 +173,7 @@ IIT Bombay.
         }
     )
     
-    if status == 'Academic Payment Approved' and instance:
+    if status in ['Academic Payment Approved', 'Academic Payment Added By Manager'] and instance:
         try:
             pdf_buffer = generate_payment_receipt_pdf(instance)
             email.attach(f'receipt_{instance.id}.pdf', pdf_buffer.read(), 'application/pdf')
