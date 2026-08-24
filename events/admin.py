@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django.contrib.auth.models import User
 from django.template.defaultfilters import slugify
 # Register your models here.
 
@@ -86,6 +87,11 @@ class PaymentVerificationUserAdmin(admin.ModelAdmin):
     list_display = ('user', 'state', 'created_at', 'updated_at')
     list_filter = ('state',)
     search_fields = ('user__username', 'user__first_name', 'user__last_name', 'state__name')
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        if db_field.name == "user":
+            kwargs["queryset"] = User.objects.filter(groups__name='Payment Verification Staff')
+        return super(PaymentVerificationUserAdmin, self).formfield_for_foreignkey(db_field, request, **kwargs)
 
 admin.site.register(CourseMap, CourseMapAdmin)
 admin.site.register(PaymentVerificationUser, PaymentVerificationUserAdmin)
