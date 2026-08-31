@@ -9,13 +9,8 @@ def jsonify(data):
     return json.loads(data.replace("u'", "'").replace("'", '"'))
 
 class CDContentForm(forms.Form):
-    healthfosslist = list(FossCategory.objects.filter(show_on_homepage = 0, foss__contains='Health').values_list('id','foss'))
-
-    foss_list = list(TutorialResource.objects.filter(Q(status = 1)|Q(status = 2), tutorial_detail__foss__show_on_homepage = 1).values_list('tutorial_detail__foss_id', 'tutorial_detail__foss__foss').order_by('tutorial_detail__foss__foss').distinct())+healthfosslist
-    foss_list.insert(0, ('', 'Select FOSS Category'))
-    
     foss_category = forms.ChoiceField(
-        choices = foss_list,
+        choices = [('', 'Select FOSS Category')],
         required = True,
         error_messages = {'required':'FOSS category field is required.'}
     )
@@ -38,6 +33,15 @@ class CDContentForm(forms.Form):
     def __init__(self, *args, **kwargs):
         super(CDContentForm, self).__init__(*args, **kwargs)
         #self.fields['language'].choices = ['nothing']
+        foss_list = [('', 'Select FOSS Category')] + list(
+            TutorialResource.objects.filter(
+                Q(status=1) | Q(status=2),
+                tutorial_detail__foss__download=True
+            ).values_list('tutorial_detail__foss_id', 'tutorial_detail__foss__foss')
+            .order_by('tutorial_detail__foss__foss')
+            .distinct()
+        )
+        self.fields['foss_category'].choices = foss_list
         if args:
             print("args out ",args)
             if ('foss_category' in args[0]) and ('level' in args[0]):
