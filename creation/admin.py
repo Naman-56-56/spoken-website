@@ -27,7 +27,8 @@ class FossSuperCategoryAdmin(admin.ModelAdmin):
 
 class FossCategoryAdmin(admin.ModelAdmin):
     exclude = ('user',)
-    list_display = ('foss', 'id', 'status', 'created', 'updated', 'user')
+    list_display = ('foss', 'id', 'status', 'download', 'created', 'updated', 'user')
+    list_editable = ('download',)
     filter_horizontal = ['category']
 
     def save_model(self, request, obj, form, change):

@@ -113,6 +113,7 @@ class FossCategory(models.Model):
     additional_software = models.CharField(max_length=255, null=True, blank=True)
     processor = models.CharField(max_length=255, null=True, blank=True)
     operating_system = models.CharField(max_length=255, null=True, blank=True)
+    download = models.BooleanField(default=False, help_text='If checked, this foss will be available for CD content download')
     
     class Meta(object):
         verbose_name = 'FOSS'

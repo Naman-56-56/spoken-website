@@ -378,7 +378,7 @@ def home(request):
         from django.http import HttpResponseForbidden
         return HttpResponseForbidden('Access restricted: you do not have permission to access the CD content download page.')
     if request.method == 'POST':
-        form = CDContentForm(request.POST)
+        form = CDContentForm(request.POST, user=request.user)
 
         if form.is_valid():
             try:
@@ -394,7 +394,7 @@ def home(request):
                 context = {'path': '', 'status': False}
         return HttpResponse(json.dumps(context), content_type='application/json')
     else:
-        form = CDContentForm()
+        form = CDContentForm(user=request.user)
     states = State.objects.order_by('name')
 
     context = {
