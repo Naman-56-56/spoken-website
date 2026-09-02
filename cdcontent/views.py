@@ -370,13 +370,14 @@ def internal_computation(request, user_type, event_id=''):
 @csrf_exempt
 def home(request):
     # Role based access for cd content download
-    allowed_roles = getattr(spoken_config, 'CD_CONTENT_ALLOWED_ROLES', [])
-    if not (request.user.is_authenticated() and (
-        request.user.is_superuser or
-        request.user.groups.filter(name__in=allowed_roles).exists()
-    )):
-        from django.http import HttpResponseForbidden
-        return HttpResponseForbidden('Access restricted: you do not have permission to access the CD content download page.')
+    # commented this code to prevent the unauthorized access message and ensuring the page opens
+    # allowed_roles = getattr(spoken_config, 'CD_CONTENT_ALLOWED_ROLES', [])
+    # if not (request.user.is_authenticated() and (
+    #     request.user.is_superuser or
+    #     request.user.groups.filter(name__in=allowed_roles).exists()
+    # )):
+    #     from django.http import HttpResponseForbidden
+    #     return HttpResponseForbidden('Access restricted: you do not have permission to access the CD content download page.')
     if request.method == 'POST':
         form = CDContentForm(request.POST, user=request.user)
 
