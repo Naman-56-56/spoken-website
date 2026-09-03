@@ -5,7 +5,36 @@ from django.db.models import Q
 # Spoken Tutorial Stuff
 from creation.models import *
 from spoken import config as spoken_config
+from donate.subscription import has_active_subscription, is_student_insti_subscribed, is_organiser_insti_subscribed
+from events.models import Invigilator, Organiser, StudentMaster, Student
 import json
+
+def is_cdcontent_role_allowed(user):
+    if not user or not user.is_authenticated() or not user.pk:
+        return False
+    if user.is_superuser:
+        return True
+    allowed_roles = getattr(spoken_config, 'CD_CONTENT_ALLOWED_ROLES', [])
+    return user.groups.filter(name__in=allowed_roles).exists()
+
+def is_invigilator_insti_subscribed(user):
+    try:
+        academic = Invigilator.objects.get(user=user).academic
+        return has_active_subscription(academic.id)
+    except Exception:
+        return False
+
+def is_user_insti_subscribed(user):
+    if not user or not user.is_authenticated() or not user.pk:
+        return False
+    if hasattr(user, 'organiser') and is_organiser_insti_subscribed(user):
+        return True
+    if hasattr(user, 'student') and is_student_insti_subscribed(user):
+        return True
+    if hasattr(user, 'invigilator') and is_invigilator_insti_subscribed(user):
+        return True
+    return False
+
 def jsonify(data):
     return json.loads(data.replace("u'", "'").replace("'", '"'))
 
@@ -35,11 +64,8 @@ class CDContentForm(forms.Form):
         user = kwargs.pop('user', None)
         super(CDContentForm, self).__init__(*args, **kwargs)
         #self.fields['language'].choices = ['nothing']
-        allowed_roles = getattr(spoken_config, 'CD_CONTENT_ALLOWED_ROLES', [])
-        bypass_download = False
-        if user and user.is_authenticated() and user.pk:
-            if user.is_superuser or user.groups.filter(name__in=allowed_roles).exists():
-                bypass_download = True
+        bypass_download = is_cdcontent_role_allowed(user)
+        is_subscribed = is_user_insti_subscribed(user) if not bypass_download else False
 
         if bypass_download:
             healthfosslist = list(FossCategory.objects.filter(show_on_homepage=0, foss__contains='Health').values_list('id', 'foss'))
@@ -47,6 +73,21 @@ class CDContentForm(forms.Form):
                 Q(status=1) | Q(status=2),
                 tutorial_detail__foss__show_on_homepage=1
             ).values_list('tutorial_detail__foss_id', 'tutorial_detail__foss__foss').order_by('tutorial_detail__foss__foss').distinct()) + healthfosslist
+        elif is_subscribed:
+            restriction_date = getattr(spoken_config, 'TUTORIAL_RESTRICTION_DATE', None)
+            foss_filter = Q(tutorial_detail__foss__download=True)
+            health_foss_filter = Q(download=True)
+            if restriction_date:
+                foss_filter |= Q(tutorial_detail__foss__created__lt=restriction_date)
+                health_foss_filter |= Q(created__lt=restriction_date)
+
+            healthfosslist = list(FossCategory.objects.filter(
+                Q(show_on_homepage=0) & Q(foss__contains='Health') & health_foss_filter
+            ).values_list('id', 'foss'))
+            foss_list = list(TutorialResource.objects.filter(
+                Q(status=1) | Q(status=2),
+                tutorial_detail__foss__show_on_homepage=1
+            ).filter(foss_filter).values_list('tutorial_detail__foss_id', 'tutorial_detail__foss__foss').order_by('tutorial_detail__foss__foss').distinct()) + healthfosslist
         else:
             healthfosslist = list(FossCategory.objects.filter(show_on_homepage=0, foss__contains='Health', download=True).values_list('id', 'foss'))
             foss_list = list(TutorialResource.objects.filter(
