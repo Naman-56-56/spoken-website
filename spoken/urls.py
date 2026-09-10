@@ -66,87 +66,88 @@ urlpatterns = [
     re_path(r'^admin/', admin.site.urls),
 
     #subscription urls
-    url(r'^payment/callback/$',  payment_callback, name="payment_callback"),
-    url(r'^payment/status/(?P<order_id>[\w-]+)/$', check_payment_status, name="check_payment_status"),
-    url(r'^payment/subscription/$',  subscription, name="initiate_payment"),
+    re_path(r'^payment/callback/$',  payment_callback, name="payment_callback"),
+    re_path(r'^payment/status/(?P<order_id>[\w-]+)/$', check_payment_status, name="check_payment_status"),
+    re_path(r'^payment/subscription/$',  subscription, name="initiate_payment"),
 
     #ilw payment urls
-    url(r'^payment/ilw/callback/$',  ilw_payment_callback, name="ilw_payment_callback"),
-    url(r'^payment/status/ilw/(?P<order_id>[\w-]+)/$', check_ilw_payment_status, name="check_ilw_payment_status"),
+    re_path(r'^payment/ilw/callback/$',  ilw_payment_callback, name="ilw_payment_callback"),
+    re_path(r'^payment/status/ilw/(?P<order_id>[\w-]+)/$', check_ilw_payment_status, name="check_ilw_payment_status"),
     
     # evens old url
-    url(r'^workshops/college/view_college/(\d+)/$',  view_college, name='view_college'),
-    url(r'^workshops/resource_center_view_college/(\d+)/$',  view_college, name='view_college'),
-    url(r'^resource_center_view_college_map_details/(\d+)/$',  view_college, name='view_college'),
-    # url(r'^software-training/academic-center/(\d+)/([a-zA-Z-]+)/$',  view_college', name='view_college'),
-    url(r'^completed_workshops_list/(?P<state_code>[\w-]+)/$',  training_list, name='training_list'),
-    url(r'^view_completed_workshop/(\d+)/$',  view_training, name='view_training'),
-    url(r'^feedback_list/(?P<code>.+)/$',  training_feedback, name='training_feedback'),
-    url(r'^feedback_view/(?P<code>.+)/(?P<user_id>.+)/$',  view_training_feedback, name='view_training_feedback'),
-    url(r'^workshops/academic_details/$',  academic_details, name='academic_details'),
-    url(r'^workshops/academic_details/(?P<state>.+)/$',  academic_details_state, name='academic_details_state'),
-    url(r'^resource_center_map_details/(?P<state>.+)/$',  academic_details_state, name='academic_details_state'),
-    url(r'^workshops/resource_center_details/$',  view_college, name='view_college'),
-    # url(r'^statistics/training/$',  statistics_training', name='statistics_training'),
+    re_path(r'^workshops/college/view_college/(\d+)/$',  view_college, name='view_college'),
+    re_path(r'^workshops/resource_center_view_college/(\d+)/$',  view_college, name='view_college'),
+    re_path(r'^resource_center_view_college_map_details/(\d+)/$',  view_college, name='view_college'),
+    # re_path(r'^software-training/academic-center/(\d+)/([a-zA-Z-]+)/$',  view_college', name='view_college'),
+    re_path(r'^completed_workshops_list/(?P<state_code>[\w-]+)/$',  training_list, name='training_list'),
+    re_path(r'^view_completed_workshop/(\d+)/$',  view_training, name='view_training'),
+    re_path(r'^feedback_list/(?P<code>.+)/$',  training_feedback, name='training_feedback'),
+    re_path(r'^feedback_view/(?P<code>.+)/(?P<user_id>.+)/$',  view_training_feedback, name='view_training_feedback'),
+    re_path(r'^workshops/academic_details/$',  academic_details, name='academic_details'),
+    re_path(r'^workshops/academic_details/(?P<state>.+)/$',  academic_details_state, name='academic_details_state'),
+    re_path(r'^resource_center_map_details/(?P<state>.+)/$',  academic_details_state, name='academic_details_state'),
+    re_path(r'^workshops/resource_center_details/$',  view_college, name='view_college'),
+    # re_path(r'^statistics/training/$',  statistics_training', name='statistics_training'),
 
     # events urls
-    url(r'^software-training/', include('events.urls', namespace='events')),
-    url(r'^software-training/', include('events.urlsv2', namespace='eventsv2')),
+    re_path(r'^software-training/', include(('events.urls', 'events'), namespace='events')),
+    re_path(r'^software-training/', include(('events.urlsv2', 'eventsv2'), namespace='eventsv2')),
 
-    url(r'^participant/', include('mdldjango.urls', namespace='mdldjango')),
-    url(r'^cdcontent/', include('cdcontent.urls', namespace='cdcontent')),
-    url(r'^create_cd_content/', include('cdcontent.urls', namespace='cdcontent')),
-    url(r'^statistics/', include('statistics.urls', namespace='statistics')),
-    url(r'^list_videos/$',  list_videos, name='list_videos'),
+    re_path(r'^participant/', include(('mdldjango.urls', 'mdldjango'), namespace='mdldjango')),
+    re_path(r'^cdcontent/', include(('cdcontent.urls', 'cdcontent'), namespace='cdcontent')),
+    re_path(r'^create_cd_content/', include(('cdcontent.urls', 'cdcontent'), namespace='cdcontent')),
+    re_path(r'^statistics/', include(('statistics.urls', 'statistics'), namespace='statistics')),
+    re_path(r'^list_videos/$',  list_videos, name='list_videos'),
+
     # team
-    url(r'^team/', include('team.urls')),
+    re_path(r'^team/', include('team.urls')),
 
     #api
-    url(r'^api/', include('api.urls', namespace='api')),
+    re_path(r'^api/', include(('api.urls', 'api'), namespace='api')),
 
     #training
-    url(r'^training/', include('training.urls', namespace='training')),
+    re_path(r'^training/', include(('training.urls', 'training'), namespace='training')),
 
     # certificate
-    url(r'^certificate/', include('certificate.urls', namespace='certificate')),
+    re_path(r'^certificate/', include(('certificate.urls', 'certificate'), namespace='certificate')),
 
-    url(r'^creation/', include('creation.urls', namespace='creation')),
-    url(r'^nicedit/', include('nicedit.urls')),
-    # url(r'^migration/creation/', include('creationmigrate.urls', namespace='creationmigrate')),
-    # url(r'^migration/events/', include('eventsmigration.urls', namespace='eventsmigration')),
-    #url(r'^media/(?P<path>.*)$', 'django.views.static.serve', {'document_root': settings.MEDIA_ROOT, 'show_indexes': False}),
+    re_path(r'^creation/', include(('creation.urls', 'creation'), namespace='creation')),
+    re_path(r'^nicedit/', include('nicedit.urls')),
+    # re_path(r'^migration/creation/', include('creationmigrate.urls', namespace='creationmigrate')),
+    # re_path(r'^migration/events/', include('eventsmigration.urls', namespace='eventsmigration')),
+    #re_path(r'^media/(?P<path>.*)$', 'django.views.static.serve', {'document_root': settings.MEDIA_ROOT, 'show_indexes': False}),
 
     # Old url adjustments
-    # url(r'^list_videos/$',  list_videos', name='list_videos'),
-    url(r'^show_video/$',  show_video, name='show_video'),
-    url(r'^search/node/([0-9a-zA-Z-+%\(\)]+)/$',  search_node, name='search_node'),
-    url(r'^saveVideoData/$',  saveVideoData, name='saveVideoData'),
+    # re_path(r'^list_videos/$',  list_videos', name='list_videos'),
+    re_path(r'^show_video/$',  show_video, name='show_video'),
+    re_path(r'^search/node/([0-9a-zA-Z-+%\(\)]+)/$',  search_node, name='search_node'),
+    re_path(r'^saveVideoData/$',  saveVideoData, name='saveVideoData'),
     # Masquerade user
-    # url(r'^masquerade/', include('masquerade.urls', namespace='masquerade')),
-    url(r'^masquerade/', include('impersonate.urls', namespace='impersonate')),
+    # re_path(r'^masquerade/', include('masquerade.urls', namespace='masquerade')),
+    re_path(r'^masquerade/', include(('impersonate.urls', 'impersonate'), namespace='impersonate')),
     # Cron links
-    url(r'^cron/subtitle-files/create/$',  create_subtitle_files, name='create_subtitle_files'),
+    re_path(r'^cron/subtitle-files/create/$',  create_subtitle_files, name='create_subtitle_files'),
 
     # reports
-    url(r'^report_builder/', include('report_builder.urls')),
+    re_path(r'^report_builder/', include('report_builder.urls')),
 
     # Youtube API V3
-    url(r'^youtube/', include('youtube.urls', namespace='youtube')),
+    re_path(r'^youtube/', include(('youtube.urls', 'youtube'), namespace='youtube')),
 
     # reports
-    url(r'^reports/', include('reports.urls', namespace='reports')),
+    re_path(r'^reports/', include(('reports.urls', 'reports'), namespace='reports')),
 
     # events2
-    # url(r'^events2/', include('events2.urls', namespace='events2')),
-    url(r'^cron/', include('cron.urls', namespace='cron')),
+    # re_path(r'^events2/', include('events2.urls', namespace='events2')),
+    re_path(r'^cron/', include(('cron.urls', 'cron'), namespace='cron')),
 
     #donation
-    url(r'^donate/', include('donate.urls', namespace='donate')),
+    re_path(r'^donate/', include(('donate.urls', 'donate'), namespace='donate')),
 
     # cms
-    url(r'^', include('cms.urls', namespace='cms')),
+    re_path(r'^', include(('cms.urls', 'cms'), namespace='cms')),
     
     #nep book fiar
-    url(r'wbf-book-fair-2023', bookfair,name="bookfair"),
+    re_path(r'wbf-book-fair-2023', bookfair,name="bookfair"),
     
 ] + static(settings.MEDIA_URL,document_root=settings.MEDIA_ROOT)

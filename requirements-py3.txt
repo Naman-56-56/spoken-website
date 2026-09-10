@@ -15,7 +15,7 @@ mccabe==0.4.0
 MechanicalSoup==0.11.0
 mock==2.0.0
 more-itertools==5.0.0
-mysqlclient==1.3.13
+mysqlclient==2.0.3
 packaging==18.0
 pathlib2==2.3.3
 pbr==5.1.1
@@ -33,8 +33,8 @@ pytest-pythonpath==0.7
 requests==2.21.0
 soupsieve==1.6
 urllib3==1.23
-django-cors-headers==3.2.0
-django-ckeditor==5.8.0
+django-cors-headers==3.7.0
+django-ckeditor==6.0.0
 python-memcached==1.59
 rq==1.8.0
 scipy==1.5.4
