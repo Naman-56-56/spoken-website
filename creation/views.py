@@ -31,7 +31,7 @@ from django.core.files.storage import FileSystemStorage
 from django.core.exceptions import PermissionDenied
 from django.core.mail import EmailMultiAlternatives
 from django.core.paginator import EmptyPage, PageNotAnInteger, Paginator
-from django.http import HttpResponse, HttpResponseRedirect, Http404
+from django.http import HttpResponse, HttpResponseRedirect, Http404, JsonResponse
 from django.views.decorators.csrf import csrf_exempt,csrf_protect
 from django.template.context_processors import csrf
 from django.shortcuts import render,redirect
@@ -2634,7 +2634,12 @@ def creation_change_published_to_pending(request):
         form = PublishToPending(request.POST)
         if form.is_valid():
             try:
-                row = TutorialResource.objects.get(tutorial_detail_id = request.POST.get('tutorial_name'), language_id = request.POST.get('language'))
+                tutorial_detail_id = form.cleaned_data.get('tutorial_name')
+                language_id = form.cleaned_data.get('language')
+                row = TutorialResource.objects.select_related('tutorial_detail__foss', 'language').get(
+                    tutorial_detail_id=tutorial_detail_id,
+                    language_id=language_id
+                )
                 comp_title = row.tutorial_detail.foss.foss + ': ' + row.tutorial_detail.tutorial + ' - ' + row.language.name
                 row.status = 0
                 row.save()
@@ -2648,7 +2653,6 @@ def creation_change_published_to_pending(request):
     context = {
         'form': form
     }
-    context.update(csrf(request))
     return render(request, 'creation/templates/creation_change_published_to_pending.html', context)
 
 
@@ -2656,29 +2660,30 @@ def creation_change_published_to_pending(request):
 def ajax_publish_to_pending(request):
     data = ''
     if request.method == 'POST':
-        foss = ''
-        lang = ''
-        try:
-            foss = request.POST.get('foss')
-            lang = request.POST.get('lang')
-        except:
-            foss = ''
-            lang = ''
+        foss = request.POST.get('foss', '')
+        lang = request.POST.get('lang', '')
         if foss and lang:
-            td_list = TutorialDetail.objects.filter(foss_id = foss).values_list('id')
-            tutorials = TutorialResource.objects.filter(tutorial_detail_id__in = td_list, language_id = lang, status = 1).distinct().order_by('tutorial_detail__level_id', 'tutorial_detail__order')
+            td_list = TutorialDetail.objects.filter(foss_id=foss).values_list('id')
+            tutorials = TutorialResource.objects.filter(
+                tutorial_detail_id__in=td_list, language_id=lang, status=1
+            ).distinct().order_by('tutorial_detail__level_id', 'tutorial_detail__order')
             for tutorial in tutorials:
                 data += '<option value = "' + str(tutorial.tutorial_detail.id) + '">' + tutorial.tutorial_detail.tutorial + '</option>'
             if data:
                 data = '<option value = "">Select Tutorial</option>' + data
         elif foss:
-            languages = Language.objects.filter(id__in = TutorialResource.objects.filter(tutorial_detail__in = TutorialDetail.objects.filter(foss_id = foss).values_list('id'), status = 1).values_list('language_id').distinct())
+            languages = Language.objects.filter(
+                id__in=TutorialResource.objects.filter(
+                    tutorial_detail__in=TutorialDetail.objects.filter(foss_id=foss).values_list('id'),
+                    status=1
+                ).values_list('language_id').distinct()
+            ).order_by('name')
             for language in languages:
                 data += '<option value = "' + str(language.id) + '">' + language.name + '</option>'
             if data:
                 data = '<option value = "">Select Language</option>' + data
 
-    return HttpResponse(json.dumps(data), content_type = 'application/json')
+    return JsonResponse(data, safe=False)
 
 
 @login_required
@@ -2689,20 +2694,26 @@ def creation_change_component_status(request):
         form = ChangeComponentStatusForm(request.POST)
         if form.is_valid():
             try:
-                row = TutorialResource.objects.get(tutorial_detail_id = request.POST.get('tutorial_name'), language_id = request.POST.get('language'))
+                tutorial_detail_id = form.cleaned_data.get('tutorial_name')
+                language_id = form.cleaned_data.get('language')
+                row = TutorialResource.objects.select_related('tutorial_detail__foss', 'language', 'common_content').get(
+                    tutorial_detail_id=tutorial_detail_id,
+                    language_id=language_id
+                )
                 comp_title = row.tutorial_detail.foss.foss + ': ' + row.tutorial_detail.tutorial + ' - ' + row.language.name
                 status_list = {
                     0: 'Pending',
                     5: 'Need Improvement',
                     6: 'Not Required'
                 }
-                component = request.POST.get('component', '')
-                status = status_list[int(request.POST.get('status', 0))]
+                component = form.cleaned_data.get('component', '')
+                status_val = int(form.cleaned_data.get('status', 0))
+                status = status_list.get(status_val, 'Unknown')
                 if component in ['outline', 'script', 'video']:
-                    setattr(row, component + '_status', int(request.POST.get('status', 0)))
+                    setattr(row, component + '_status', status_val)
                     row.save()
                 else:
-                    setattr(row.common_content, component + '_status', int(request.POST.get('status', 0)))
+                    setattr(row.common_content, component + '_status', status_val)
                     row.common_content.save()
                 add_contributor_notification(row, comp_title, component.title() + ' status has been changed to ' + status)
                 messages.success(request, component.title() + ' status has been changed to ' + status)
@@ -2714,7 +2725,6 @@ def creation_change_component_status(request):
     context = {
         'form': form
     }
-    context.update(csrf(request))
     return render(request, 'creation/templates/creation_change_component_status.html', context)
 
 
@@ -2727,39 +2737,49 @@ def ajax_change_component_status(request):
         tut = request.POST.get('tut', '')
         comp = request.POST.get('comp', '')
         if foss and lang and tut and comp:
-            tr_rec = TutorialResource.objects.get(tutorial_detail_id = tut, language = lang)
+            tr_rec = TutorialResource.objects.select_related('common_content').filter(
+                tutorial_detail_id=tut, language_id=lang
+            ).first()
             compValue = None
             data = '<option value = "">Select Status</option><option value = "0">Pending</option>'
-            if comp in ['outline', 'script', 'video']:
-                compValue = getattr(tr_rec, comp + '_status')
-            else:
-                compValue = getattr(tr_rec.common_content, comp + '_status')
+            if tr_rec:
+                if comp in ['outline', 'script', 'video']:
+                    compValue = getattr(tr_rec, comp + '_status', None)
+                elif hasattr(tr_rec, 'common_content') and tr_rec.common_content:
+                    compValue = getattr(tr_rec.common_content, comp + '_status', None)
             if compValue:
                 data += '<option value = "5">Need Improvement</option>'
             if comp in ['code', 'assignment', 'additional_material']:
                 data += '<option value = "6">Not Required</option>'
         elif foss and lang:
             data = ['', '']
-            td_list = TutorialDetail.objects.filter(foss_id = foss).values_list('id')
-            lang_rec = Language.objects.get(pk = lang)
-            tutorials = TutorialResource.objects.filter(tutorial_detail_id__in = td_list, language_id = lang, status = 0).distinct()
+            td_list = TutorialDetail.objects.filter(foss_id=foss).values_list('id')
+            lang_rec = Language.objects.filter(pk=lang).first()
+            tutorials = TutorialResource.objects.filter(
+                tutorial_detail_id__in=td_list, language_id=lang, status=0
+            ).distinct()
             data[0] = '<option value = "">Select Tutorial Name</option>'
             data[1] = '<option value = "outline">Outline</option><option value = "script">Script</option>'
             for tutorial in tutorials:
                 data[0] += '<option value = "' + str(tutorial.tutorial_detail.id) + '">' + tutorial.tutorial_detail.tutorial + '</option>'
-            if lang_rec.name == 'English':
+            if lang_rec and lang_rec.name == 'English':
                 data[1] += '<option value = "slide">Slides</option><option value = "video">Video</option><option value = "code">Codefiles</option><option value = "assignment">Assignment</option><option value = "prerequisite">Prerequisite</option><option value = "keyword">Keywords</option><option value = "additional_material">Additional material</option>'
             else:
                 data[1] += '<option value = "video">Video</option>'
             data[1] = '<option value = "">Select Component</option>' + data[1]
         elif foss:
-            languages = Language.objects.filter(id__in = TutorialResource.objects.filter(tutorial_detail__in = TutorialDetail.objects.filter(foss_id = foss).values_list('id'), status = 0).values_list('language_id').distinct())
+            languages = Language.objects.filter(
+                id__in=TutorialResource.objects.filter(
+                    tutorial_detail__in=TutorialDetail.objects.filter(foss_id=foss).values_list('id'),
+                    status=0
+                ).values_list('language_id').distinct()
+            ).order_by('name')
             for language in languages:
                 data += '<option value = "' + str(language.id) + '">' + language.name + '</option>'
             if data:
                 data = '<option value = "">Select Language</option>' + data
 
-    return HttpResponse(json.dumps(data), content_type = 'application/json')
+    return JsonResponse(data, safe=False)
 
 
 def report_missing_component(request, trid):
@@ -3083,41 +3103,42 @@ def update_keywords(request):
 def update_sheet(request, sheet_type):
     sheet_types = ['instruction', 'installation', 'brochure']
     if not is_administrator(request.user) and not is_contributor(request.user) and not is_contenteditor(request.user)\
-            or not sheet_type in sheet_types:
+            or sheet_type not in sheet_types:
         raise PermissionDenied()
     form = UpdateSheetsForm()
     if request.method == 'POST':
         form = UpdateSheetsForm(request.POST, request.FILES)
         if form.is_valid():
             try:
-                foss_id = request.POST.get('foss')
-                foss = FossCategory.objects.get(pk = foss_id)
-                language_id = request.POST.get('language')
-                language = Language.objects.get(pk = language_id)
+                foss_id = form.cleaned_data.get('foss')
+                foss = FossCategory.objects.get(pk=foss_id)
+                language_id = form.cleaned_data.get('language')
+                language = Language.objects.get(pk=language_id)
                 if sheet_type == 'brochure':
-                    sheet_path = 'videos/' + str(foss.id) + '/' + \
-                        foss.foss.replace(' ', '-') + '-' + sheet_type.title() + \
-                        '-' + language.name + '.pdf'
+                    sheet_path = os.path.join(
+                        'videos', str(foss.id),
+                        foss.foss.replace(' ', '-') + '-' + sheet_type.title() + '-' + language.name + '.pdf'
+                    )
                 else:
-                    sheet_path = 'videos/' + str(foss.id) + '/' + \
-                        foss.foss.replace(' ', '-') + '-' + sheet_type.title() + \
-                        '-Sheet-' + language.name + '.pdf'
-                fout = open(settings.MEDIA_ROOT + sheet_path, 'wb+')
-                f = request.FILES['comp']
-                # Iterate through the chunks.
-                for chunk in f.chunks():
-                    fout.write(chunk)
-                fout.close()
-                messages.success(request, sheet_type.title()
-                                 + 'sheet uploaded successfully!')
+                    sheet_path = os.path.join(
+                        'videos', str(foss.id),
+                        foss.foss.replace(' ', '-') + '-' + sheet_type.title() + '-Sheet-' + language.name + '.pdf'
+                    )
+                full_path = os.path.join(settings.MEDIA_ROOT, sheet_path)
+                os.makedirs(os.path.dirname(full_path), exist_ok=True)
+                uploaded_file = request.FILES['comp']
+                with open(full_path, 'wb+') as fout:
+                    for chunk in uploaded_file.chunks():
+                        fout.write(chunk)
+                messages.success(request, sheet_type.title() + ' sheet uploaded successfully!')
                 form = UpdateSheetsForm()
             except Exception as e:
-                print(e)
+                logger.error("Error in update_sheet: %s", e)
+                messages.error(request, str(e))
     context = {
         'form': form,
         'sheet_type': sheet_type
     }
-    context.update(csrf(request))
     return render(request, 'creation/templates/update_sheet.html', context)
 
 
@@ -3130,33 +3151,30 @@ def ajax_manual_language(request):
         sheet_type = request.POST.get('sheet_type', '')
         if foss_id and language_id and sheet_type:
             try:
-                foss = FossCategory.objects.get(pk = foss_id)
-                language = Language.objects.get(pk = language_id)
-                sheet_path = 'videos/' + str(foss.id) + '/' + \
-                    foss.foss + '-' + sheet_type.title() + '-Sheet-' + \
-                    language.name + '.pdf'
-                if os.path.isfile(settings.MEDIA_ROOT + sheet_path):
-                    data = '<a href = "' + settings.MEDIA_URL + sheet_path + \
-                        '" target = "_blank"> Click here to view the currently \
-                    available instruction sheet for the tutorial selected \
-                    above</a>'
+                foss = FossCategory.objects.get(pk=foss_id)
+                language = Language.objects.get(pk=language_id)
+                sheet_path = os.path.join(
+                    'videos', str(foss.id),
+                    foss.foss + '-' + sheet_type.title() + '-Sheet-' + language.name + '.pdf'
+                )
+                full_path = os.path.join(settings.MEDIA_ROOT, sheet_path)
+                if os.path.isfile(full_path):
+                    data = '<a href="' + settings.MEDIA_URL + sheet_path + '" target="_blank"> Click here to view the currently available instruction sheet for the tutorial selected above</a>'
             except Exception as e:
-                print(e)
-                pass
+                logger.error("Error in ajax_manual_language: %s", e)
         elif foss_id:
             tutorials = TutorialResource.objects.filter(
-                Q(status = 1) | Q(status = 2),
-                tutorial_detail__foss_id = foss_id
+                Q(status=1) | Q(status=2),
+                tutorial_detail__foss_id=foss_id
             ).values_list(
                 'language_id',
                 'language__name'
             ).order_by('language__name').distinct()
             for tutorial in tutorials:
-                data += '<option value = "' + str(tutorial[0]) + '">' + \
-                    str(tutorial[1]) + '</option>'
+                data += '<option value = "' + str(tutorial[0]) + '">' + str(tutorial[1]) + '</option>'
             if data:
                 data = '<option value = "">-- Select Language --</option>' + data
-    return HttpResponse(json.dumps(data), content_type = 'application/json')
+    return JsonResponse(data, safe=False)
 
 
 @csrf_exempt
