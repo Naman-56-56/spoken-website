@@ -308,7 +308,7 @@ def creation_add_role(request, role_type,languages):
 
 @login_required
 def creation_accept_role_request(request, recid, user_type):
-    if is_administrator:
+    if is_administrator(request.user):
         roles = {
             0: 'Contributor',
             1: 'External-Contributor',
@@ -349,7 +349,7 @@ def creation_accept_role_request(request, recid, user_type):
 
 @login_required
 def creation_reject_role_request(request, recid, user_type):
-    if is_administrator:
+    if is_administrator(request.user):
         roles = {
             0: 'Contributor',
             1: 'External-Contributor',
@@ -436,7 +436,7 @@ def creation_revoke_role_request(request, role_type,languages):
 
 @login_required
 def creation_list_role_requests(request, tabid = 'contributor'):
-    if is_administrator:
+    if is_administrator(request.user):
         contrib_recs = RoleRequest.objects.filter(role_type = 0, status = 0).order_by('-updated')
         ext_contrib_recs = RoleRequest.objects.filter(role_type = 1, status = 0).order_by('-updated')
         admin_recs = RoleRequest.objects.filter(role_type = 2, status = 0).order_by('-updated')
@@ -456,7 +456,7 @@ def creation_list_role_requests(request, tabid = 'contributor'):
 
 @login_required
 def creation_lang_list_role_requests(request, tabid = 'contributor'):
-    if is_language_manager:
+    if is_language_manager(request.user):
         language_manager_langs = LanguageManager.objects.filter(
             user_id= request.user.id).values_list('language_id')
         contrib_recs = RoleRequest.objects.filter(role_type = 0,

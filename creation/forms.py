@@ -795,6 +795,10 @@ class AvailableFossForm(forms.ModelForm):
         error_messages = {'required': 'FOSS category field required.'}
     )
 
+    class Meta(object):
+        model = TutorialDetail
+        fields = '__all__'
+
 class UpdatePrerequisiteForm(forms.Form):
     source_foss = forms.ChoiceField(
         choices = [('', '-- Select Foss --'),] + list(FossCategory.objects.filter(status=1).values_list('id', 'foss').order_by('foss')),
